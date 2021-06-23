@@ -112,7 +112,7 @@ out_fatal_abort(const char *file, int line, const char *func,
 
 /* produce debug/trace output */
 #define LOG(level, ...) do { \
-	if (!EVALUATE_DBG_EXPRESSIONS) break;\
+	//if (!EVALUATE_DBG_EXPRESSIONS) break;\
 	OUT_LOG(__FILE__, __LINE__, __func__, level, __VA_ARGS__);\
 } while (0)
 
