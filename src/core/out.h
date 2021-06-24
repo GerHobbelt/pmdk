@@ -57,13 +57,11 @@ extern "C" {
 
 /* produce debug/trace output */
 #define LOG(level, ...) do { \
-	if (!EVALUATE_DBG_EXPRESSIONS) break; \
 	OUT_LOG(__FILE__, __LINE__, __func__, level, __VA_ARGS__);\
 } while (0)
 
 /* produce debug/trace output without prefix and new line */
 #define LOG_NONL(level, ...) do { \
-	if (!EVALUATE_DBG_EXPRESSIONS) break; \
 	OUT_NONL(level, __VA_ARGS__); \
 } while (0)
 

@@ -505,8 +505,8 @@ out_nonl(int level, const char *fmt, ...)
 {
 	va_list ap;
 
-	if (Log_level < level)
-			return;
+	// if (Log_level < level)
+	// 		return;
 
 	va_start(ap, fmt);
 	out_common(NULL, 0, NULL, level, "", fmt, ap);
@@ -523,8 +523,8 @@ out_log(const char *file, int line, const char *func, int level,
 {
 	va_list ap;
 
-	if (Log_level < level)
-		return;
+	// if (Log_level < level)
+	// 	return;
 
 	va_start(ap, fmt);
 	out_common(file, line, func, level, "\n", fmt, ap);
