@@ -33,61 +33,11 @@ extern "C" {
 #define EVALUATE_DBG_EXPRESSIONS 1
 #endif
 
-#ifdef DEBUG
-
 #define OUT_LOG out_log
 #define OUT_NONL out_nonl
 #define OUT_FATAL out_fatal
 #define OUT_FATAL_ABORT out_fatal
 
-#else
-
-static __attribute__((always_inline)) inline void
-out_log_discard(const char *file, int line, const char *func, int level,
-		const char *fmt, ...)
-{
-	(void) file;
-	(void) line;
-	(void) func;
-	(void) level;
-	(void) fmt;
-}
-
-static __attribute__((always_inline)) inline void
-out_nonl_discard(int level, const char *fmt, ...)
-{
-	(void) level;
-	(void) fmt;
-}
-
-static __attribute__((always_inline)) OUT_FATAL_DISCARD_NORETURN inline void
-out_fatal_discard(const char *file, int line, const char *func,
-		const char *fmt, ...)
-{
-	(void) file;
-	(void) line;
-	(void) func;
-	(void) fmt;
-}
-
-static __attribute__((always_inline)) NORETURN inline void
-out_fatal_abort(const char *file, int line, const char *func,
-		const char *fmt, ...)
-{
-	(void) file;
-	(void) line;
-	(void) func;
-	(void) fmt;
-
-	abort();
-}
-
-#define OUT_LOG out_log_discard
-#define OUT_NONL out_nonl_discard
-#define OUT_FATAL out_fatal_discard
-#define OUT_FATAL_ABORT out_fatal_abort
-
-#endif
 
 #if defined(__KLOCWORK__)
 #define TEST_ALWAYS_TRUE_EXPR(cnd)

@@ -151,7 +151,7 @@ out_init(const char *log_prefix, const char *log_level_var,
 
 	Log_prefix = log_prefix;
 
-#ifdef DEBUG
+
 	char *log_level;
 	char *log_file;
 
@@ -186,7 +186,7 @@ out_init(const char *log_prefix, const char *log_level_var,
 			abort();
 		}
 	}
-#endif	/* DEBUG */
+
 
 	char *log_alignment = os_getenv("PMDK_LOG_ALIGN");
 	if (log_alignment) {
@@ -200,11 +200,11 @@ out_init(const char *log_prefix, const char *log_level_var,
 	else
 		setlinebuf(Out_fp);
 
-#ifdef DEBUG
+
 	static char namepath[PATH_MAX];
 	LOG(1, "pid %d: program: %s", getpid(),
 		util_getexecname(namepath, PATH_MAX));
-#endif
+
 	LOG(1, "%s version %d.%d", log_prefix, major_version, minor_version);
 
 	static __attribute__((used)) const char *version_msg =
@@ -446,7 +446,7 @@ out_error(const char *file, int line, const char *func,
 				sep, errstr);
 	}
 
-#ifdef DEBUG
+
 	if (Log_level >= 1) {
 		char buf[MAXPRINT];
 		cc = 0;
@@ -474,7 +474,7 @@ out_error(const char *file, int line, const char *func,
 
 		Print(buf);
 	}
-#endif
+
 
 end:
 	errno = oerrno;
