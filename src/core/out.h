@@ -30,12 +30,7 @@ extern "C" {
 #endif
 
 #ifndef EVALUATE_DBG_EXPRESSIONS
-#if defined(DEBUG) || defined(__clang_analyzer__) || defined(__COVERITY__) ||\
-	defined(__KLOCWORK__)
 #define EVALUATE_DBG_EXPRESSIONS 1
-#else
-#define EVALUATE_DBG_EXPRESSIONS 0
-#endif
 #endif
 
 #ifdef DEBUG
@@ -112,6 +107,7 @@ out_fatal_abort(const char *file, int line, const char *func,
 
 /* produce debug/trace output */
 #define LOG(level, ...) do { \
+	if (!EVALUATE_DBG_EXPRESSIONS) break; \
 	OUT_LOG(__FILE__, __LINE__, __func__, level, __VA_ARGS__);\
 } while (0)
 
