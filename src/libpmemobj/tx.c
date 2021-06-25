@@ -1606,7 +1606,7 @@ pmemobj_tx_zalloc(size_t size, uint64_t type_num)
 PMEMoid
 pmemobj_tx_xalloc(size_t size, uint64_t type_num, uint64_t flags)
 {
-	LOG(1, "size %zu type_num %llx flags %llx", size, (unsigned long long) type_num, (unsigned long long flags));
+	LOG(1, "size %zu type_num %llx flags %llx", size, (unsigned long long) type_num, (unsigned long long) flags);
 	struct tx *tx = get_tx();
 
 	ASSERT_IN_TX(tx);
