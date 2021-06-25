@@ -716,7 +716,7 @@ err:
 int
 pmemobj_tx_begin(PMEMobjpool *pop, jmp_buf env, ...)
 {
-	LOG(3, NULL);
+	LOG(1, NULL);
 
 	int err = 0;
 	struct tx *tx = get_tx();
@@ -904,7 +904,7 @@ pmemobj_tx_stage(void)
 static void
 obj_tx_abort(int errnum, int user)
 {
-	LOG(3, NULL);
+	LOG(1, "errnum %d user %d", errnum, user);
 	struct tx *tx = get_tx();
 
 	ASSERT_IN_TX(tx);
@@ -976,7 +976,7 @@ tx_post_commit(struct tx *tx)
 void
 pmemobj_tx_commit(void)
 {
-	LOG(3, NULL);
+	LOG(1, NULL);
 
 	PMEMOBJ_API_START();
 	struct tx *tx = get_tx();
@@ -1030,7 +1030,7 @@ pmemobj_tx_commit(void)
 int
 pmemobj_tx_end(void)
 {
-	LOG(3, NULL);
+	LOG(1, NULL);
 
 	struct tx *tx = get_tx();
 
@@ -1377,7 +1377,7 @@ pmemobj_tx_add_common(struct tx *tx, struct tx_range_def *args)
 int
 pmemobj_tx_add_range_direct(const void *ptr, size_t size)
 {
-	LOG(3, NULL);
+	LOG(1, "ptr %p size %zu", ptr, size);
 
 	PMEMOBJ_API_START();
 	struct tx *tx = get_tx();
@@ -1460,7 +1460,7 @@ pmemobj_tx_xadd_range_direct(const void *ptr, size_t size, uint64_t flags)
 int
 pmemobj_tx_add_range(PMEMoid oid, uint64_t hoff, size_t size)
 {
-	LOG(3, NULL);
+	LOG(1, "oid.off 0x%016" PRIx64 "hoff %llx size %zu",oid.off, (unsigned long long) hoff, size);
 
 	PMEMOBJ_API_START();
 	struct tx *tx = get_tx();
@@ -1498,7 +1498,7 @@ pmemobj_tx_add_range(PMEMoid oid, uint64_t hoff, size_t size)
 int
 pmemobj_tx_xadd_range(PMEMoid oid, uint64_t hoff, size_t size, uint64_t flags)
 {
-	LOG(3, NULL);
+	LOG(1, "oid.off 0x%016" PRIx64 "hoff %llx size %zu flags %llx",oid.off, (unsigned long long) hoff, size, (unsigned long long) flags);
 
 	PMEMOBJ_API_START();
 	struct tx *tx = get_tx();
@@ -1606,7 +1606,7 @@ pmemobj_tx_zalloc(size_t size, uint64_t type_num)
 PMEMoid
 pmemobj_tx_xalloc(size_t size, uint64_t type_num, uint64_t flags)
 {
-	LOG(3, NULL);
+	LOG(1, "size %zu type_num %llx flags %llx", size, (unsigned long long) type_num, (unsigned long long flags));
 	struct tx *tx = get_tx();
 
 	ASSERT_IN_TX(tx);
@@ -1801,7 +1801,7 @@ pmemobj_tx_wcsdup(const wchar_t *s, uint64_t type_num)
 int
 pmemobj_tx_xfree(PMEMoid oid, uint64_t flags)
 {
-	LOG(3, NULL);
+	LOG(1, "oid.off 0x%016" PRIx64 " flags %llx", oid.off, (unsigned long long) flags);
 
 	struct tx *tx = get_tx();
 
