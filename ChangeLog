@@ -1,6 +1,13 @@
 	* Unreleased *
 
 	This release:
+	- ...
+
+Wed May 31 2023 Oksana Sałyk <oksana.salyk@intel.com>
+
+	* Version 1.14.0
+
+	This release:
 	- removes libpmempool/pmempool tests that use log/blk/btt pool types
 	- removes log/blk/btt support from (lib)pmempool, pmemspoil and pmemwrite
 	- removes btt specific test and related btt tests tools
@@ -8,9 +15,8 @@
 	- removes libpmemblk/libpmemlog source code and documentation
 	- removes support for Travis bulids
 	- removes libvmem and libvmmalloc folders
-  - reorganizes `make cstyle` command handling by addind separate steps
+	- reorganizes `make cstyle` command handling by addind separate steps
 	- adds explicit test failure when Valgrind is not installed but required
-	- ...
 
 Wed May 31 2023 Oksana Sałyk <oksana.salyk@intel.com>
 
