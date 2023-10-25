@@ -14,24 +14,6 @@ TEST_DEPS = \
 	unittest\
 	tools
 
-BLK_TESTS = \
-	blk_include\
-	blk_nblock\
-	blk_non_zero\
-	blk_pool\
-	blk_pool_lock\
-	blk_recovery\
-	blk_rw\
-	blk_rw_mt
-
-LOG_TESTS = \
-	log_basic\
-	log_include\
-	log_pool\
-	log_pool_lock\
-	log_recovery\
-	log_walker
-
 OBJ_DEPS = \
 	obj_list
 
@@ -235,8 +217,6 @@ PMEMPOOL_TESTS = \
 EXAMPLES_TESTS = \
 	ex_libpmem\
 	ex_libpmem2\
-	ex_libpmemblk\
-	ex_libpmemlog\
 	ex_libpmemobj\
 	ex_linkedlist\
 	ex_pmreorder
@@ -267,8 +247,6 @@ PMREORDER_TESTS = \
 
 LOCAL_TESTS = \
 	$(OBJ_TESTS)\
-	$(BLK_TESTS)\
-	$(LOG_TESTS)\
 	$(OTHER_TESTS)\
 	$(PMEM_TESTS)\
 	$(PMEM2_TESTS)\
@@ -373,10 +351,6 @@ pycheck: $(TESTS)
 pcheck: pcheck-local-quiet
 	@echo "No failures."
 
-pcheck-blk: TARGET = pcheck
-pcheck-blk: $(BLK_TESTS)
-	@echo "No failures."
-
 pcheck-log: TARGET = pcheck
 pcheck-log: $(LOG_TESTS)
 	@echo "No failures."
@@ -419,7 +393,7 @@ SUPP_SYNC_FILES=$(shell echo *.supp | sed s/supp/$(SYNC_EXT)/g)
 	cp $(shell echo $^ | cut -d" " -f1) $(DIR_SYNC)
 	@touch $@
 
-.PHONY: all check clean clobber cstyle pcheck pcheck-blk pcheck-log pcheck-obj\
+.PHONY: all check clean clobber cstyle pcheck pcheck-log pcheck-obj\
 	 pcheck-other pcheck-pmem pcheck-pmempool\
 	 test unittest tools format pcheck-libpmempool pycheck\
 	 pcheck-local $(TESTS_BUILD)

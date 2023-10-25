@@ -9,14 +9,7 @@ OBJS = out_err_mt.o
 
 LIBPMEMCOMMON=y
 LIBPMEM=y
-LIBPMEMLOG=y
-LIBPMEMBLK=y
 LIBPMEMOBJ=y
 LIBPMEMPOOL=y
 
 include ../Makefile.inc
-
-# Libpmemblk and libpmemlog are deprecated.
-# This flag allows to build tests, examples and benchmarks
-# using pmemblk/pmemlog despite the deprecated state.
-CFLAGS += -Wno-deprecated-declarations

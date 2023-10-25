@@ -9,13 +9,6 @@ TARGET = pool_open
 OBJS = pool_open.o
 
 LIBPMEMOBJ=y
-LIBPMEMBLK=y
-LIBPMEMLOG=y
 USE_PMEMSPOIL=y
 
 include ../Makefile.inc
-
-# Libpmemblk and libpmemlog are deprecated.
-# This flag allows to build tests, examples and benchmarks
-# using pmemblk/pmemlog despite the deprecated state.
-CFLAGS += -Wno-deprecated-declarations
