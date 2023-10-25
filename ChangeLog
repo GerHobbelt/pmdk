@@ -1,6 +1,13 @@
 	* Unreleased *
 
 	This release:
+	- ...
+
+Tue Aug 8 2023 Oksana Sałyk <oksana.salyk@intel.com>
+
+	* Version 2.0.0
+
+	This release :
 	- Removes libpmemlog, libpmemblk, btt, and their support in (lib)pmempool
 	- Removes Windows support
 	- Removes FreeBSD support
@@ -14,6 +21,7 @@
 		- obj_sync (#5643, #5646, #5699, #5705, #5706, #5727)
 		- pmem2_vm_reservation (#5707)
 		- pmempool_sync (#5708)
+	- Re-enable pmem2_persist_valgrind tests previously excluded by mistake (#5855)
 
 Wed May 31 2023 Oksana Sałyk <oksana.salyk@intel.com>
 
