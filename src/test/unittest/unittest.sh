@@ -1398,7 +1398,9 @@ function configure_valgrind() {
 
 	if [ "$CHECK_TYPE" == "none" ]; then
 		if [ "$1" == "force-disable" ]; then
-			msg "$UNITTEST_NAME: all valgrind tests disabled"
+			# The test requires Valgrind to be disabled and no Valgrind tool
+			# is forced by the user. The requirement is met.
+			:
 		elif [ "$2" = "force-enable" ]; then
 			CHECK_TYPE="$1"
 			require_valgrind_tool $1 $3
@@ -1765,6 +1767,9 @@ function require_mmap_under_valgrind() {
 		fatal "$FILE_MAX_DAX_DEVICES not found. Run make test."
 	fi
 
+	# XXX The number of device DAXes available under this condition is dependent
+	# on the size and the order of device DAXes in the testconfig.sh file.
+	# https://github.com/pmem/pmdk/issues/5615
 	if [ "$REQUIRE_DAX_DEVICES" -gt "$(< $FILE_MAX_DAX_DEVICES)" ]; then
 		msg "$UNITTEST_NAME: SKIP: anonymous mmap under Valgrind not possible for $REQUIRE_DAX_DEVICES DAX device(s)."
 		exit 0
