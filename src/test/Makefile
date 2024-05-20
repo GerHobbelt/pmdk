@@ -62,6 +62,9 @@ OBJ_TESTS = \
 	obj_list_valgrind\
 	obj_list_macro\
 	obj_locks\
+	obj_log_get_treshold\
+	obj_log_set_function\
+	obj_log_set_treshold\
 	obj_mem\
 	obj_memblock\
 	obj_memcheck\
@@ -147,7 +150,8 @@ OTHER_TESTS = \
 	util_uuid_generate\
 	util_vec\
 	util_vecq\
-	log_errno
+	log_errno\
+	valgrind_check
 
 ifeq ($(ARCH), x86_64)
 OTHER_TESTS += \
@@ -158,6 +162,9 @@ PMEM_TESTS = \
 	pmem_include\
 	pmem_is_pmem\
 	pmem_is_pmem_posix\
+	pmem_log_get_treshold\
+	pmem_log_set_function\
+	pmem_log_set_treshold\
 	pmem_map_file\
 	pmem_has_auto_flush\
 	pmem_deep_persist\
