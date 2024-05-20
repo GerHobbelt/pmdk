@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: BSD-3-Clause
 # Copyright 2024, Intel Corporation
 
-import subprocess
+import subprocess # nosec B304
 import json
 import re
 
@@ -12,8 +12,8 @@ from typing import List, Dict, Any
 DEBUG = False
 PARSER_DEBUG = False
 
-TOP = '../../'
-OUTPUT_PATH = TOP + 'src/test/core_log/'
+TOP = '../../src/'
+OUTPUT_PATH = TOP + 'test/core_log_max/'
 OUTPUT_C = OUTPUT_PATH + 'call_all.c.generated'
 
 NOTICE = """/*
@@ -68,13 +68,10 @@ def extract_append_code(file_name: str, start_line: int, code: str) -> str:
     return code
 
 IGNORE_FILES = [
-    '.git/',
-    'src/core/log_internal.h',
-    'src/libpmem2/',
-    'src/libpmempool/',
-    'src/test/',
-    'utils/',
-    'CODING_STYLE.md',
+    'core/log_internal.h',
+    'libpmem2/',
+    'libpmempool/',
+    'test/',
 ]
 
 def file_should_be_ignored(file: str) -> bool:
@@ -84,8 +81,16 @@ def file_should_be_ignored(file: str) -> bool:
     return False
 
 def extract_all_calls(func: str) -> List[Dict]:
-    cmd = f'cd {TOP}; grep -Irn {func}'
-    returned_output = subprocess.check_output(cmd, shell=True)
+    # XXX The grep call could be replaced by os.walk() call + for loops over
+    # all lines of all files + re.search().
+    # In the meantime:
+    # B607: Starting a process with a partial executable path - ignored since it
+    # is normal way of accessing system utilities.
+    # B603: subprocess call - check for execution of untrusted input - there is
+    # no way around it. Theoretically, some bad actor could inject faulty grep
+    # in the head of the PATH which will lead to us parsing whatever they could
+    # benefit from. So, do not commit the produced code automatically.
+    returned_output = subprocess.check_output(['grep', '-Irn', func], cwd=TOP) # nosec B607, B603
     string = returned_output.decode("utf-8")
     calls = []
     total = 0
@@ -111,12 +116,16 @@ def extract_all_calls(func: str) -> List[Dict]:
                 code = extract_append_code(file, int(line_no), code)
             call = {
                 'file': file,
-                'line': line_no,
+                'line_no': line_no,
                 'code': code
             }
             calls.append(call)
         else:
             bad_line('An unexpected line format', line)
+    # sort calls by file and line
+    def key_func(a: Dict) -> str:
+        return a['file'] + a['line_no']
+    calls.sort(key=key_func)
     print(f'[{func}] total: {total}, included: {len(calls)}')
     return calls
 
@@ -360,7 +369,7 @@ def generate_call(file, func: str, call: Dict) -> str:
         args = ', ' + ', '.join(call['args'])
     else:
         args = ''
-    file.write(f'\t// {call["file"]}:{call["line"]}\n')
+    file.write(f'\t// src/{call["file"]}\n')
     file.write(f'\t{func}("{call["format_string"]}"{args});\n')
 
 def generate_func_with_errno(func: str, calls: List[Dict]) -> None:
