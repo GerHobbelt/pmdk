@@ -741,7 +741,9 @@ heap_reclaim_run(struct palloc_heap *heap, struct memory_block *m, int startup)
 
 	struct recycler_element e = recycler_element_new(heap, m);
 	if (c == NULL) {
+#ifdef DEBUG
 		uint32_t size_idx = m->size_idx;
+#endif
 		struct run_bitmap b;
 		m->m_ops->get_bitmap(m, &b);
 
@@ -827,7 +829,9 @@ heap_ensure_zone_reclaimed(struct palloc_heap *heap, uint32_t zone_id)
 		DEFAULT_ALLOC_CLASS_ID,
 		HEAP_ARENA_PER_THREAD);
 
+#ifdef DEBUG /* variables required for ASSERTs below */
 	struct zone *z = ZID_TO_ZONE(heap->layout, zone_id);
+#endif
 	ASSERTeq(z->header.magic, ZONE_HEADER_MAGIC);
 
 	/* check a second time just to make sure no other thread was first */
@@ -1185,7 +1189,7 @@ heap_split_block(struct palloc_heap *heap, struct bucket *b,
 			NULL, NULL, 0, 0, NULL};
 		memblock_rebuild_state(heap, &r);
 		if (bucket_insert_block(b, &r) != 0)
-			LOG(2,
+			CORE_LOG_WARNING(
 				"failed to allocate memory block runtime tracking info");
 	} else {
 		uint32_t new_chunk_id = m->chunk_id + units;
@@ -1197,7 +1201,7 @@ heap_split_block(struct palloc_heap *heap, struct bucket *b,
 		*m = memblock_huge_init(heap, m->chunk_id, m->zone_id, units);
 
 		if (bucket_insert_block(b, &n) != 0)
-			LOG(2,
+			CORE_LOG_WARNING(
 				"failed to allocate memory block runtime tracking info");
 	}
 
@@ -1320,7 +1324,7 @@ heap_set_narenas_max(struct palloc_heap *heap, unsigned size)
 	util_mutex_lock(&h->arenas.lock);
 	unsigned capacity = (unsigned)VEC_CAPACITY(&h->arenas.vec);
 	if (size < capacity) {
-		LOG(2, "cannot decrease max number of arenas");
+		CORE_LOG_ERROR("cannot decrease max number of arenas");
 		goto out;
 	} else if (size == capacity) {
 		ret = 0;

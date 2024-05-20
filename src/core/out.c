@@ -17,113 +17,17 @@
 
 #include "out.h"
 #include "os.h"
-#include "os_thread.h"
 #include "valgrind_internal.h"
 #include "util.h"
 #include "log_internal.h"
+#include "last_error_msg.h"
+
+#define MAXPRINT CORE_LAST_ERROR_MSG_MAXPRINT
 
 static const char *Log_prefix;
 static int Log_level;
 static FILE *Out_fp;
 static unsigned Log_alignment;
-
-#ifndef NO_LIBPTHREAD
-#define MAXPRINT 8192	/* maximum expected log line */
-#else
-#define MAXPRINT 256	/* maximum expected log line for libpmem */
-#endif
-
-struct errormsg
-{
-	char msg[MAXPRINT];
-};
-
-#ifndef NO_LIBPTHREAD
-
-static os_once_t Last_errormsg_key_once = OS_ONCE_INIT;
-static os_tls_key_t Last_errormsg_key;
-
-static void
-_Last_errormsg_key_alloc(void)
-{
-	int pth_ret = os_tls_key_create(&Last_errormsg_key, free);
-	if (pth_ret)
-		FATAL("!os_thread_key_create");
-
-	VALGRIND_ANNOTATE_HAPPENS_BEFORE(&Last_errormsg_key_once);
-}
-
-static void
-Last_errormsg_key_alloc(void)
-{
-	os_once(&Last_errormsg_key_once, _Last_errormsg_key_alloc);
-	/*
-	 * Workaround Helgrind's bug:
-	 * https://bugs.kde.org/show_bug.cgi?id=337735
-	 */
-	VALGRIND_ANNOTATE_HAPPENS_AFTER(&Last_errormsg_key_once);
-}
-
-static inline void
-Last_errormsg_fini(void)
-{
-	void *p = os_tls_get(Last_errormsg_key);
-	if (p) {
-		free(p);
-		(void) os_tls_set(Last_errormsg_key, NULL);
-	}
-	(void) os_tls_key_delete(Last_errormsg_key);
-}
-
-static inline struct errormsg *
-Last_errormsg_get(void)
-{
-	Last_errormsg_key_alloc();
-
-	struct errormsg *errormsg = os_tls_get(Last_errormsg_key);
-	if (errormsg == NULL) {
-		errormsg = malloc(sizeof(struct errormsg));
-		if (errormsg == NULL)
-			return NULL;
-		/* make sure it contains empty string initially */
-		errormsg->msg[0] = '\0';
-		int ret = os_tls_set(Last_errormsg_key, errormsg);
-		if (ret)
-			FATAL("!os_tls_set");
-	}
-	return errormsg;
-}
-
-#else
-
-/*
- * We don't want libpmem to depend on libpthread.  Instead of using pthread
- * API to dynamically allocate thread-specific error message buffer, we put
- * it into TLS.  However, keeping a pretty large static buffer (8K) in TLS
- * may lead to some issues, so the maximum message length is reduced.
- * Fortunately, it looks like the longest error message in libpmem should
- * not be longer than about 90 chars (in case of pmem_check_version()).
- */
-
-static __thread struct errormsg Last_errormsg;
-
-static inline void
-Last_errormsg_key_alloc(void)
-{
-}
-
-static inline void
-Last_errormsg_fini(void)
-{
-}
-
-static inline const struct errormsg *
-Last_errormsg_get(void)
-{
-	return &Last_errormsg;
-}
-
-#endif /* NO_LIBPTHREAD */
 
 /*
  * out_init -- initialize the log
@@ -242,7 +146,7 @@ out_init(const char *log_prefix, const char *log_level_var,
 	CORE_LOG_ALWAYS("%s", ndctl_ge_63_msg);
 #endif
 
-	Last_errormsg_key_alloc();
+	last_error_msg_init();
 }
 
 /*
@@ -257,8 +161,6 @@ out_fini(void)
 		fclose(Out_fp);
 		Out_fp = stderr;
 	}
-
-	Last_errormsg_fini();
 }
 
 /*
@@ -311,8 +213,6 @@ out_common(const char *file, int line, const char *func, int level,
 	const char *sep = "";
 	char errstr[UTIL_MAX_ERR_MSG] = "";
 
-	unsigned long olast_error = 0;
-
 	if (file) {
 		char *f = strrchr(file, OS_DIR_SEPARATOR);
 		if (f)
@@ -335,15 +235,7 @@ out_common(const char *file, int line, const char *func, int level,
 		if (*fmt == '!') {
 			sep = ": ";
 			fmt++;
-			if (*fmt == '!') {
-				fmt++;
-				/* it will abort on non Windows OS */
-				util_strwinerror(olast_error, errstr,
-					UTIL_MAX_ERR_MSG);
-			} else {
-				util_strerror(oerrno, errstr, UTIL_MAX_ERR_MSG);
-			}
-
+			util_strerror(oerrno, errstr, UTIL_MAX_ERR_MSG);
 		}
 		ret = vsnprintf(&buf[cc], MAXPRINT - cc, fmt, ap);
 		if (ret < 0) {
@@ -365,20 +257,21 @@ end:
  * out_error -- common error output code, all error messages go through here
  */
 static void
-out_error(const char *file, int line, const char *func,
+out_error(int use_errno, const char *file, int line, const char *func,
 		const char *suffix, const char *fmt, va_list ap)
 {
-	int oerrno = errno;
-	unsigned long olast_error = 0;
+	int oerrno = 0;
+	if (use_errno)
+		oerrno = errno;
 	unsigned cc = 0;
 	unsigned print_msg = 1;
 	int ret;
 	const char *sep = "";
 	char errstr[UTIL_MAX_ERR_MSG] = "";
 
-	char *errormsg = (char *)out_get_errormsg();
+	char *last_error = (char *)last_error_msg_get();
 
-	if (errormsg == NULL) {
+	if (last_error == NULL) {
 		out_print_func("No memory to properly format error strings.");
 		return;
 	}
@@ -392,26 +285,18 @@ out_error(const char *file, int line, const char *func,
 			fmt++;
 		}
 
-		if (*fmt == '!') {
+		if (use_errno) {
 			sep = ": ";
-			fmt++;
-			if (*fmt == '!') {
-				fmt++;
-				/* it will abort on non Windows OS */
-				util_strwinerror(olast_error, errstr,
-					UTIL_MAX_ERR_MSG);
-			} else {
-				util_strerror(oerrno, errstr, UTIL_MAX_ERR_MSG);
-			}
+			util_strerror(oerrno, errstr, UTIL_MAX_ERR_MSG);
 		}
 
-		ret = vsnprintf(&errormsg[cc], MAXPRINT, fmt, ap);
+		ret = vsnprintf(&last_error[cc], MAXPRINT, fmt, ap);
 		if (ret < 0) {
-			strcpy(errormsg, "vsnprintf failed");
+			strcpy(last_error, "vsnprintf failed");
 			goto end;
 		}
 		cc += (unsigned)ret;
-		out_snprintf(&errormsg[cc], MAXPRINT - cc, "%s%s",
+		out_snprintf(&last_error[cc], MAXPRINT - cc, "%s%s",
 				sep, errstr);
 	}
 
@@ -438,7 +323,7 @@ out_error(const char *file, int line, const char *func,
 			}
 		}
 
-		out_snprintf(&buf[cc], MAXPRINT - cc, "%s%s", errormsg,
+		out_snprintf(&buf[cc], MAXPRINT - cc, "%s%s", last_error,
 				suffix);
 
 		out_print_func(buf);
@@ -449,7 +334,8 @@ out_error(const char *file, int line, const char *func,
 #endif
 
 end:
-	errno = oerrno;
+	if (use_errno)
+		errno = oerrno;
 }
 
 /*
@@ -508,43 +394,16 @@ out_log(const char *file, int line, const char *func, int level,
 }
 
 /*
- * out_fatal -- output a fatal error & die (i.e. assertion failure)
- */
-void
-out_fatal(const char *file, int line, const char *func,
-		const char *fmt, ...)
-{
-	va_list ap;
-	va_start(ap, fmt);
-
-	out_common(file, line, func, 1, "\n", fmt, ap);
-
-	va_end(ap);
-
-	abort();
-}
-
-/*
  * out_err -- output an error message
  */
 void
-out_err(const char *file, int line, const char *func,
+out_err(int use_errno, const char *file, int line, const char *func,
 		const char *fmt, ...)
 {
 	va_list ap;
 	va_start(ap, fmt);
 
-	out_error(file, line, func, "\n", fmt, ap);
+	out_error(use_errno, file, line, func, "\n", fmt, ap);
 
 	va_end(ap);
-}
-
-/*
- * out_get_errormsg -- get the last error message
- */
-const char *
-out_get_errormsg(void)
-{
-	const struct errormsg *errormsg = Last_errormsg_get();
-	return &errormsg->msg[0];
 }

@@ -18,6 +18,7 @@ SOURCE =\
 	$(CORE)/out.c\
 	$(CORE)/util.c\
 	$(CORE)/util_posix.c\
+	$(CORE)/last_error_msg.c\
 	$(CORE)/log.c\
 	$(CORE)/log_default.c\
 	$(COMMON)/file.c\

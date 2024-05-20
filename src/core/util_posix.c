@@ -24,17 +24,6 @@ util_strerror(int errnum, char *buff, size_t bufflen)
 }
 
 /*
- * util_strwinerror -- should never be called on posix OS - abort()
- */
-void
-util_strwinerror(unsigned long err, char *buff, size_t bufflen)
-{
-	/* suppress unused-parameter errors */
-	SUPPRESS_UNUSED(err, buff, bufflen);
-	abort();
-}
-
-/*
  * util_part_realpath -- get canonicalized absolute pathname
  *
  * As paths used in a poolset file have to be absolute (checked when parsing
@@ -59,7 +48,7 @@ util_compare_file_inodes(const char *path1, const char *path2)
 			ERR_W_ERRNO("stat failed for %s", path1);
 			return -1;
 		}
-		LOG(1, "stat failed for %s", path1);
+		CORE_LOG_ERROR("stat failed for %s", path1);
 		errno = 0;
 		return strcmp(path1, path2) != 0;
 	}
@@ -69,7 +58,7 @@ util_compare_file_inodes(const char *path1, const char *path2)
 			ERR_W_ERRNO("stat failed for %s", path2);
 			return -1;
 		}
-		LOG(1, "stat failed for %s", path2);
+		CORE_LOG_ERROR("stat failed for %s", path2);
 		errno = 0;
 		return strcmp(path1, path2) != 0;
 	}

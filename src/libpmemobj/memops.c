@@ -349,7 +349,7 @@ operation_merge_entry_add(struct operation_context *ctx,
 
 	if (VECQ_ENQUEUE(&ctx->merge_entries, entry) != 0) {
 		/* this is fine, only runtime perf will get slower */
-		LOG(2, "out of memory - unable to track entries");
+		CORE_LOG_WARNING("out of memory - unable to track entries");
 	}
 }
 
@@ -466,7 +466,10 @@ operation_add_buffer(struct operation_context *ctx,
 		ulog_clobber_entry(next_entry, ctx->p_ops);
 
 	/* create a persistent log entry */
-	struct ulog_entry_buf *e = ulog_entry_buf_create(ctx->ulog_curr,
+#ifdef DEBUG /* variables required for ASSERTs below */
+	struct ulog_entry_buf *e =
+#endif
+	ulog_entry_buf_create(ctx->ulog_curr,
 		ctx->ulog_curr_offset,
 		ctx->ulog_curr_gen_num,
 		dest, src, data_size,

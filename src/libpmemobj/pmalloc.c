@@ -166,7 +166,10 @@ pfree(PMEMobjpool *pop, uint64_t *off)
 	struct operation_context *ctx =
 		pmalloc_operation_hold_type(pop, OPERATION_INTERNAL, 1);
 
-	int ret = palloc_operation(&pop->heap, *off, off, 0, NULL, NULL,
+#ifdef DEBUG /* variables required for ASSERTs below */
+	int ret =
+#endif
+	palloc_operation(&pop->heap, *off, off, 0, NULL, NULL,
 		0, 0, 0, 0, ctx);
 	ASSERTeq(ret, 0);
 
@@ -326,6 +329,9 @@ pmalloc_header_type_parser(const void *arg, void *dest, size_t dest_size)
 {
 	const char *vstr = arg;
 	enum pobj_header_type *htype = dest;
+#ifndef DEBUG
+	SUPPRESS_UNUSED(dest_size);
+#endif
 	ASSERTeq(dest_size, sizeof(enum pobj_header_type));
 
 	if (strcmp(vstr, "none") == 0) {
@@ -567,7 +573,7 @@ CTL_WRITE_HANDLER(max)(void *ctx,
 
 	int ret = heap_set_narenas_max(&pop->heap, size);
 	if (ret) {
-		LOG(1, "cannot change max arena number");
+		ERR_WO_ERRNO("cannot change max arena number");
 		return -1;
 	}
 
@@ -633,7 +639,7 @@ CTL_WRITE_HANDLER(arena_id)(void *ctx,
 	 * or if it is not equal zero
 	 */
 	if (arena_id < 1 || arena_id > narenas) {
-		LOG(1, "arena id outside of the allowed range: <1,%u>",
+		ERR_WO_ERRNO("arena id outside of the allowed range: <1,%u>",
 			narenas);
 		errno = ERANGE;
 		return -1;
@@ -671,14 +677,14 @@ CTL_WRITE_HANDLER(automatic)(void *ctx, enum ctl_query_source source,
 	 * or if it is not equal zero
 	 */
 	if (arena_id < 1 || arena_id > narenas) {
-		LOG(1, "arena id outside of the allowed range: <1,%u>",
+		ERR_WO_ERRNO("arena id outside of the allowed range: <1,%u>",
 			narenas);
 		errno = ERANGE;
 		return -1;
 	}
 
 	if (arg_in != 0 && arg_in != 1) {
-		LOG(1, "incorrect arena state, must be 0 or 1");
+		ERR_WO_ERRNO("incorrect arena state, must be 0 or 1");
 		return -1;
 	}
 
@@ -710,7 +716,7 @@ CTL_READ_HANDLER(automatic)(void *ctx,
 	 * or if it is not equal zero
 	 */
 	if (arena_id < 1 || arena_id > narenas) {
-		LOG(1, "arena id outside of the allowed range: <1,%u>",
+		ERR_WO_ERRNO("arena id outside of the allowed range: <1,%u>",
 			narenas);
 		errno = ERANGE;
 		return -1;
@@ -758,7 +764,7 @@ CTL_READ_HANDLER(size)(void *ctx,
 	 * or if it is not equal zero
 	 */
 	if (arena_id < 1 || arena_id > narenas) {
-		LOG(1, "arena id outside of the allowed range: <1,%u>",
+		ERR_WO_ERRNO("arena id outside of the allowed range: <1,%u>",
 			narenas);
 		errno = ERANGE;
 		return -1;
@@ -900,6 +906,9 @@ arenas_assignment_type_parser(const void *arg, void *dest, size_t dest_size)
 {
 	const char *vstr = arg;
 	enum pobj_arenas_assignment_type *atype = dest;
+#ifndef DEBUG
+	SUPPRESS_UNUSED(dest_size);
+#endif
 	ASSERTeq(dest_size, sizeof(enum pobj_header_type));
 
 	if (strcmp(vstr, "global") == 0) {
@@ -957,7 +966,7 @@ CTL_WRITE_HANDLER(arenas_default_max)(void *ctx,
 	unsigned size = *(unsigned *)arg;
 
 	if (size == 0) {
-		LOG(1, "number of default arenas can't be 0");
+		ERR_WO_ERRNO("number of default arenas can't be 0");
 		return -1;
 	}
 

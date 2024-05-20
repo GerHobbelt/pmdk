@@ -395,6 +395,7 @@ USE_LOG_PMEMCORE=y
 OBJS +=\
 	$(TOP)/src/nondebug/core/alloc.o\
 	$(TOP)/src/nondebug/core/fs_posix.o\
+	$(TOP)/src/nondebug/core/last_error_msg.o\
 	$(TOP)/src/nondebug/core/log.o\
 	$(TOP)/src/nondebug/core/log_default.o\
 	$(TOP)/src/nondebug/core/os_posix.o\
@@ -413,6 +414,7 @@ USE_LOG_PMEMCORE=y
 OBJS +=\
 	$(TOP)/src/debug/core/alloc.o\
 	$(TOP)/src/debug/core/fs_posix.o\
+	$(TOP)/src/debug/core/last_error_msg.o\
 	$(TOP)/src/debug/core/log.o\
 	$(TOP)/src/debug/core/log_default.o\
 	$(TOP)/src/debug/core/os_posix.o\
@@ -543,6 +545,7 @@ endif
 # assumed the following are among them already.
 ifneq ($(USE_LOG_PMEMCORE),y)
 OBJS += $(TOP)/src/debug/core/out.o
+OBJS += $(TOP)/src/debug/core/last_error_msg.o
 OBJS += $(TOP)/src/debug/core/log.o
 OBJS += $(TOP)/src/debug/core/log_default.o
 OBJS += $(TOP)/src/debug/core/util_posix.o
