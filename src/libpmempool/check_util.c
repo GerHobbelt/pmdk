@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BSD-3-Clause
-/* Copyright 2016-2023, Intel Corporation */
+/* Copyright 2016-2024, Intel Corporation */
 
 /*
  * check_util.c -- check utility functions
@@ -72,7 +72,7 @@ check_data_alloc(void)
 
 	struct check_data *data = calloc(1, sizeof(*data));
 	if (data == NULL) {
-		ERR("!calloc");
+		ERR_W_ERRNO("calloc");
 		return NULL;
 	}
 
@@ -262,7 +262,7 @@ status_push(PMEMpoolcheck *ppc, struct check_status *st, uint32_t question)
 	if (CHECK_IS_NOT(ppc, REPAIR)) {
 		/* error status */
 		if (status_msg_info_only(st->msg)) {
-			ERR("no error message for the user");
+			ERR_WO_ERRNO("no error message for the user");
 			st->msg[0] = '\0';
 		}
 		st->status.type = PMEMPOOL_CHECK_MSG_TYPE_ERROR;
@@ -329,7 +329,7 @@ check_status_create(PMEMpoolcheck *ppc, enum pmempool_check_msg_type type,
 		int ret = util_snprintf(st->msg + p,
 				MAX_MSG_STR_SIZE - (size_t)p, ": %s", buff);
 		if (ret < 0) {
-			ERR("!snprintf");
+			ERR_W_ERRNO("snprintf");
 			status_release(st);
 			return -1;
 		}
@@ -603,7 +603,7 @@ check_get_time_str(time_t time)
 	else {
 		int ret = util_snprintf(str_buff, STR_MAX, "unknown");
 		if (ret < 0) {
-			ERR("!snprintf");
+			ERR_W_ERRNO("snprintf");
 			return "";
 		}
 	}
@@ -620,7 +620,7 @@ check_get_uuid_str(uuid_t uuid)
 
 	int ret = util_uuid_to_string(uuid, uuid_str);
 	if (ret != 0) {
-		ERR("failed to convert uuid to string");
+		ERR_WO_ERRNO("failed to convert uuid to string");
 		return "";
 	}
 	return uuid_str;

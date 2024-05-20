@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BSD-3-Clause
-/* Copyright 2017-2020, Intel Corporation */
+/* Copyright 2017-2024, Intel Corporation */
 
 /*
  * shutdown_state.c -- unsafe shudown detection
@@ -71,12 +71,10 @@ shutdown_state_add_part(struct shutdown_state *sds, int fd,
 
 	int ret = pmem2_source_device_usc(src, &usc);
 
-	if (ret == PMEM2_E_NOSUPP) {
-		usc = 0;
-	} else if (ret != 0) {
+	if (ret != 0) {
 		if (ret == -EPERM) {
 			/* overwrite error message */
-			ERR(
+			ERR_WO_ERRNO(
 				"Cannot read unsafe shutdown count. For more information please check https://github.com/pmem/pmdk/issues/4207");
 		}
 		LOG(2, "cannot read unsafe shutdown count for %d", fd);
@@ -84,8 +82,8 @@ shutdown_state_add_part(struct shutdown_state *sds, int fd,
 	}
 
 	ret = pmem2_source_device_id(src, NULL, &len);
-	if (ret != PMEM2_E_NOSUPP && ret != 0) {
-		ERR("cannot read uuid of %d", fd);
+	if (ret != 0) {
+		ERR_WO_ERRNO("cannot read uuid of %d", fd);
 		goto err;
 	}
 
@@ -93,13 +91,13 @@ shutdown_state_add_part(struct shutdown_state *sds, int fd,
 	uid = Zalloc(len);
 
 	if (uid == NULL) {
-		ERR("!Zalloc");
+		ERR_W_ERRNO("Zalloc");
 		goto err;
 	}
 
 	ret = pmem2_source_device_id(src, uid, &len);
-	if (ret != PMEM2_E_NOSUPP && ret != 0) {
-		ERR("cannot read uuid of %d", fd);
+	if (ret != 0) {
+		ERR_WO_ERRNO("cannot read uuid of %d", fd);
 		Free(uid);
 		goto err;
 	}
@@ -229,6 +227,7 @@ shutdown_state_check(struct shutdown_state *curr_sds,
 		return 0;
 	}
 	/* an ADR failure - the pool might be corrupted */
-	ERR("an ADR failure was detected, the pool might be corrupted");
+	ERR_WO_ERRNO(
+		"an ADR failure was detected, the pool might be corrupted");
 	return 1;
 }

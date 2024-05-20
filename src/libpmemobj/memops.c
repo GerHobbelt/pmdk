@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BSD-3-Clause
-/* Copyright 2016-2022, Intel Corporation */
+/* Copyright 2016-2024, Intel Corporation */
 
 /*
  * memops.c -- aggregated memory operations helper implementation
@@ -87,7 +87,7 @@ operation_log_transient_init(struct operation_log *log)
 	struct ulog *src = Zalloc(sizeof(struct ulog) +
 		ULOG_BASE_SIZE);
 	if (src == NULL) {
-		ERR("!Zalloc");
+		ERR_W_ERRNO("Zalloc");
 		return -1;
 	}
 
@@ -113,7 +113,7 @@ operation_log_persistent_init(struct operation_log *log,
 	struct ulog *src = Zalloc(sizeof(struct ulog) +
 		ULOG_BASE_SIZE);
 	if (src == NULL) {
-		ERR("!Zalloc");
+		ERR_W_ERRNO("Zalloc");
 		return -1;
 	}
 
@@ -174,7 +174,7 @@ operation_new(struct ulog *ulog, size_t ulog_base_nbytes,
 {
 	struct operation_context *ctx = Zalloc(sizeof(*ctx));
 	if (ctx == NULL) {
-		ERR("!Zalloc");
+		ERR_W_ERRNO("Zalloc");
 		goto error_ctx_alloc;
 	}
 
@@ -569,7 +569,7 @@ operation_user_buffer_verify_align(struct operation_context *ctx,
 	ssize_t capacity_unaligned = (ssize_t)userbuf->size - size_diff
 		- (ssize_t)sizeof(struct ulog);
 	if (capacity_unaligned < (ssize_t)CACHELINE_SIZE) {
-		ERR("Capacity insufficient");
+		ERR_WO_ERRNO("Capacity insufficient");
 		return -1;
 	}
 
@@ -580,7 +580,7 @@ operation_user_buffer_verify_align(struct operation_context *ctx,
 	userbuf->size = capacity_aligned + sizeof(struct ulog);
 
 	if (operation_user_buffer_try_insert(ctx->p_ops->base, userbuf)) {
-		ERR("Buffer currently used");
+		ERR_WO_ERRNO("Buffer currently used");
 		return -1;
 	}
 
@@ -685,7 +685,7 @@ operation_reserve(struct operation_context *ctx, size_t new_capacity)
 {
 	if (new_capacity > ctx->ulog_capacity) {
 		if (ctx->extend == NULL) {
-			ERR("no extend function present");
+			ERR_WO_ERRNO("no extend function present");
 			return -1;
 		}
 

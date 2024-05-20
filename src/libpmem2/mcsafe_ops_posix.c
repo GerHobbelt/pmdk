@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BSD-3-Clause
-/* Copyright 2021-2022, Intel Corporation */
+/* Copyright 2021-2024, Intel Corporation */
 
 #include <errno.h>
 #include <setjmp.h>
@@ -46,12 +46,12 @@ mcsafe_op_reg_read(struct pmem2_source *src, void *buf, size_t size,
 	ssize_t retsize = pread(fd, buf, size, (off_t)offset);
 	if (retsize == -1) {
 		if (errno == EIO) {
-			ERR("physical I/O error occurred on read operation, "
-					"possible bad block");
+			ERR_WO_ERRNO(
+				"physical I/O error occurred on read operation, possible bad block");
 			return PMEM2_E_IO_FAIL;
 		}
 
-		ERR("!pread");
+		ERR_W_ERRNO("pread");
 		return PMEM2_E_ERRNO;
 	}
 
@@ -72,12 +72,12 @@ mcsafe_op_reg_write(struct pmem2_source *src, void *buf, size_t size,
 	ssize_t retsize = pwrite(fd, buf, size, (off_t)offset);
 	if (retsize == -1) {
 		if (errno == EIO) {
-			ERR("physical I/O error occurred on write operation, "
-					"possible bad block");
+			ERR_WO_ERRNO(
+				"physical I/O error occurred on write operation, possible bad block");
 			return PMEM2_E_IO_FAIL;
 		}
 
-		ERR("!pwrite");
+		ERR_W_ERRNO("pwrite");
 		return PMEM2_E_ERRNO;
 	}
 
@@ -126,7 +126,7 @@ handle_sigbus_execute_mcsafe_op(struct pmem2_source *src, void *buf,
 	struct sigaction old_act;
 	/* register a custom signal handler */
 	if (sigaction(SIGBUS, &custom_act, &old_act) == -1) {
-		ERR("!sigaction");
+		ERR_W_ERRNO("sigaction");
 		return PMEM2_E_ERRNO;
 	}
 
@@ -134,7 +134,7 @@ handle_sigbus_execute_mcsafe_op(struct pmem2_source *src, void *buf,
 
 	/* sigsetjmp returns nonzero only when returning from siglongjmp */
 	if (sigsetjmp(mcsafe_jmp_buf, 1)) {
-		ERR("physical I/O error occurred, possible bad block");
+		ERR_WO_ERRNO("physical I/O error occurred, possible bad block");
 		ret = PMEM2_E_IO_FAIL;
 		goto clnup_null_global_jmp;
 	}
@@ -149,7 +149,7 @@ clnup_null_global_jmp:
 
 	/* restore the previous signal handler */
 	if (sigaction(SIGBUS, &old_act, NULL) == -1) {
-		ERR("!sigaction");
+		ERR_W_ERRNO("sigaction");
 		return PMEM2_E_ERRNO;
 	}
 
@@ -274,9 +274,8 @@ static int
 pmem2_source_type_check_mcsafe_supp(struct pmem2_source *src)
 {
 	if (src->type != PMEM2_SOURCE_FD && src->type != PMEM2_SOURCE_HANDLE) {
-		ERR("operation doesn't support provided source type, only "\
-			"sources created from file descriptor or file handle "\
-			"are supported");
+		ERR_WO_ERRNO(
+			"operation doesn't support provided source type, only sources created from file descriptor or file handle are supported");
 		return PMEM2_E_SOURCE_TYPE_NOT_SUPPORTED;
 	}
 
@@ -297,8 +296,9 @@ pmem2_source_check_op_size(struct pmem2_source *src, size_t size, size_t offset)
 
 	size_t max_size = (size_t)(src_size - offset);
 	if (size > max_size) {
-		ERR("size of read %zu from offset %zu goes beyond the file "
-				"length %zu", size, offset, max_size);
+		ERR_WO_ERRNO(
+			"size of read %zu from offset %zu goes beyond the file length %zu",
+			size, offset, max_size);
 		return PMEM2_E_LENGTH_OUT_OF_RANGE;
 	}
 

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BSD-3-Clause
-/* Copyright 2014-2023, Intel Corporation */
+/* Copyright 2014-2024, Intel Corporation */
 
 /*
  * file.c -- file utilities
@@ -37,7 +37,7 @@ util_file_exists(const char *path)
 		return 1;
 
 	if (errno != ENOENT) {
-		ERR("!os_access \"%s\"", path);
+		ERR_W_ERRNO("os_access \"%s\"", path);
 		return -1;
 	}
 
@@ -91,7 +91,7 @@ util_fd_get_type(int fd)
 	os_stat_t st;
 
 	if (os_fstat(fd, &st) < 0) {
-		ERR("!fstat");
+		ERR_W_ERRNO("fstat");
 		return OTHER_ERROR;
 	}
 
@@ -108,7 +108,7 @@ util_file_get_type(const char *path)
 	LOG(3, "path \"%s\"", path);
 
 	if (path == NULL) {
-		ERR("invalid (NULL) path");
+		ERR_WO_ERRNO("invalid (NULL) path");
 		errno = EINVAL;
 		return OTHER_ERROR;
 	}
@@ -123,7 +123,7 @@ util_file_get_type(const char *path)
 	os_stat_t st;
 
 	if (os_stat(path, &st) < 0) {
-		ERR("!stat");
+		ERR_W_ERRNO("stat");
 		return OTHER_ERROR;
 	}
 
@@ -140,7 +140,7 @@ util_file_get_size(const char *path)
 
 	int fd = os_open(path, O_RDONLY);
 	if (fd < 0) {
-		ERR("!open");
+		ERR_W_ERRNO("open");
 		return -1;
 	}
 
@@ -179,7 +179,7 @@ util_fd_get_size(int fd)
 	/* size is unsigned, this function returns signed */
 	if (size >= INT64_MAX) {
 		errno = ERANGE;
-		ERR(
+		ERR_WO_ERRNO(
 			"file size (%ld) too big to be represented in 64-bit signed integer",
 			size);
 		return -1;
@@ -203,7 +203,7 @@ util_file_map_whole(const char *path)
 	int flags = O_RDWR;
 
 	if ((fd = os_open(path, flags)) < 0) {
-		ERR("!open \"%s\"", path);
+		ERR_W_ERRNO("open \"%s\"", path);
 		return NULL;
 	}
 
@@ -241,7 +241,7 @@ util_file_zero(const char *path, os_off_t off, size_t len)
 	int flags = O_RDWR;
 
 	if ((fd = os_open(path, flags)) < 0) {
-		ERR("!open \"%s\"", path);
+		ERR_W_ERRNO("open \"%s\"", path);
 		return -1;
 	}
 
@@ -402,13 +402,13 @@ util_file_create(const char *path, size_t size, size_t minsize)
 	ASSERTne(size, 0);
 
 	if (size < minsize) {
-		ERR("size %zu smaller than %zu", size, minsize);
+		ERR_WO_ERRNO("size %zu smaller than %zu", size, minsize);
 		errno = EINVAL;
 		return -1;
 	}
 
 	if (((os_off_t)size) < 0) {
-		ERR("invalid size (%zu) for os_off_t", size);
+		ERR_WO_ERRNO("invalid size (%zu) for os_off_t", size);
 		errno = EFBIG;
 		return -1;
 	}
@@ -423,17 +423,17 @@ util_file_create(const char *path, size_t size, size_t minsize)
 	 * initialization completes.
 	 */
 	if ((fd = os_open(path, flags, mode)) < 0) {
-		ERR("!open \"%s\"", path);
+		ERR_W_ERRNO("open \"%s\"", path);
 		return -1;
 	}
 
 	if ((errno = os_posix_fallocate(fd, 0, (os_off_t)size)) != 0) {
-		ERR("!posix_fallocate \"%s\", %zu", path, size);
+		ERR_W_ERRNO("posix_fallocate \"%s\", %zu", path, size);
 		goto err;
 	}
 
 	if (os_flock(fd, OS_LOCK_EX | OS_LOCK_NB) < 0) {
-		ERR("!flock \"%s\"", path);
+		ERR_W_ERRNO("flock \"%s\"", path);
 		goto err;
 	}
 
@@ -462,12 +462,12 @@ util_file_open(const char *path, size_t *size, size_t minsize, int flags)
 	int fd;
 
 	if ((fd = os_open(path, flags)) < 0) {
-		ERR("!open \"%s\"", path);
+		ERR_W_ERRNO("open \"%s\"", path);
 		return -1;
 	}
 
 	if (os_flock(fd, OS_LOCK_EX | OS_LOCK_NB) < 0) {
-		ERR("!flock \"%s\"", path);
+		ERR_W_ERRNO("flock \"%s\"", path);
 		(void) os_close(fd);
 		return -1;
 	}
@@ -478,13 +478,13 @@ util_file_open(const char *path, size_t *size, size_t minsize, int flags)
 
 		ssize_t actual_size = util_fd_get_size(fd);
 		if (actual_size < 0) {
-			ERR("stat \"%s\": negative size", path);
+			ERR_WO_ERRNO("stat \"%s\": negative size", path);
 			errno = EINVAL;
 			goto err;
 		}
 
 		if ((size_t)actual_size < minsize) {
-			ERR("size %zu smaller than %zu",
+			ERR_WO_ERRNO("size %zu smaller than %zu",
 					(size_t)actual_size, minsize);
 			errno = EINVAL;
 			goto err;
@@ -500,7 +500,7 @@ util_file_open(const char *path, size_t *size, size_t minsize, int flags)
 err:
 	oerrno = errno;
 	if (os_flock(fd, OS_LOCK_UN))
-		ERR("!flock unlock");
+		ERR_W_ERRNO("flock unlock");
 	(void) os_close(fd);
 	errno = oerrno;
 	return -1;

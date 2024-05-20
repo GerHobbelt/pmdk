@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BSD-3-Clause
-/* Copyright 2016-2023, Intel Corporation */
+/* Copyright 2016-2024, Intel Corporation */
 
 /*
  * replica.c -- groups all commands for replica manipulation
@@ -132,14 +132,14 @@ replica_remove_part(struct pool_set *set, unsigned repn, unsigned partn,
 	/* if the part is a device dax, clear its bad blocks */
 	if (type == TYPE_DEVDAX && fix_bad_blocks &&
 	    badblocks_clear_all(part->path)) {
-		ERR("clearing bad blocks in device dax failed -- '%s'",
+		ERR_WO_ERRNO("clearing bad blocks in device dax failed -- '%s'",
 			part->path);
 		errno = EIO;
 		return -1;
 	}
 
 	if (type == TYPE_NORMAL && util_unlink(part->path)) {
-		ERR("!removing part %u from replica %u failed",
+		ERR_W_ERRNO("removing part %u from replica %u failed",
 				partn, repn);
 		return -1;
 	}
@@ -165,7 +165,7 @@ create_replica_health_status(struct pool_set *set, unsigned repn)
 	replica_hs = Zalloc(sizeof(struct replica_health_status)
 				+ nparts * sizeof(struct part_health_status));
 	if (replica_hs == NULL) {
-		ERR("!Zalloc for replica health status");
+		ERR_W_ERRNO("Zalloc for replica health status");
 		return NULL;
 	}
 
@@ -187,7 +187,8 @@ replica_part_remove_recovery_file(struct part_health_status *phs)
 		return 0;
 
 	if (os_unlink(phs->recovery_file_name) < 0) {
-		ERR("!removing the bad block recovery file failed -- '%s'",
+		ERR_W_ERRNO(
+			"removing the bad block recovery file failed -- '%s'",
 			phs->recovery_file_name);
 		return -1;
 	}
@@ -256,7 +257,7 @@ replica_create_poolset_health_status(struct pool_set *set,
 	set_hs = Zalloc(sizeof(struct poolset_health_status) +
 			nreplicas * sizeof(struct replica_health_status *));
 	if (set_hs == NULL) {
-		ERR("!Zalloc for poolset health state");
+		ERR_W_ERRNO("Zalloc for poolset health state");
 		return -1;
 	}
 	set_hs->nreplicas = nreplicas;
@@ -639,7 +640,7 @@ check_checksums_and_signatures(struct pool_set *set,
 
 			if (!util_checksum(hdr, sizeof(*hdr), &hdr->checksum, 0,
 					POOL_HDR_CSUM_END_OFF(hdr))) {
-				ERR("invalid checksum of pool header");
+				ERR_WO_ERRNO("invalid checksum of pool header");
 				rep_hs->part[p].flags |= IS_BROKEN;
 			} else if (util_is_zeroed(hdr, sizeof(*hdr))) {
 					rep_hs->part[p].flags |= IS_BROKEN;
@@ -647,7 +648,7 @@ check_checksums_and_signatures(struct pool_set *set,
 
 			enum pool_type type = pool_hdr_get_type(hdr);
 			if (type == POOL_TYPE_UNKNOWN) {
-				ERR("invalid signature");
+				ERR_WO_ERRNO("invalid signature");
 				rep_hs->part[p].flags |= IS_BROKEN;
 			}
 		}
@@ -673,14 +674,16 @@ replica_badblocks_recovery_file_save(struct part_health_status *part_hs)
 
 	int fd = os_open(path, O_WRONLY | O_TRUNC);
 	if (fd < 0) {
-		ERR("!opening bad block recovery file failed -- '%s'", path);
+		ERR_W_ERRNO(
+			"opening bad block recovery file failed -- '%s'",
+			path);
 		return -1;
 	}
 
 	FILE *recovery_file_name = os_fdopen(fd, "w");
 	if (recovery_file_name == NULL) {
-		ERR(
-			"!opening a file stream for bad block recovery file failed -- '%s'",
+		ERR_W_ERRNO(
+			"opening a file stream for bad block recovery file failed -- '%s'",
 			path);
 		os_close(fd);
 		return -1;
@@ -694,12 +697,16 @@ replica_badblocks_recovery_file_save(struct part_health_status *part_hs)
 	}
 
 	if (fflush(recovery_file_name) == EOF) {
-		ERR("!flushing bad block recovery file failed -- '%s'", path);
+		ERR_W_ERRNO(
+			"flushing bad block recovery file failed -- '%s'",
+			path);
 		goto exit_error;
 	}
 
 	if (os_fsync(fd) < 0) {
-		ERR("!syncing bad block recovery file failed -- '%s'", path);
+		ERR_W_ERRNO(
+			"syncing bad block recovery file failed -- '%s'",
+			path);
 		goto exit_error;
 	}
 
@@ -707,12 +714,16 @@ replica_badblocks_recovery_file_save(struct part_health_status *part_hs)
 	fprintf(recovery_file_name, "0 0\n");
 
 	if (fflush(recovery_file_name) == EOF) {
-		ERR("!flushing bad block recovery file failed -- '%s'", path);
+		ERR_W_ERRNO(
+			"flushing bad block recovery file failed -- '%s'",
+			path);
 		goto exit_error;
 	}
 
 	if (os_fsync(fd) < 0) {
-		ERR("!syncing bad block recovery file failed -- '%s'", path);
+		ERR_W_ERRNO(
+			"syncing bad block recovery file failed -- '%s'",
+			path);
 		goto exit_error;
 	}
 
@@ -745,7 +756,8 @@ replica_part_badblocks_recovery_file_read(struct part_health_status *part_hs)
 
 	FILE *recovery_file = os_fopen(path, "r");
 	if (!recovery_file) {
-		ERR("!opening the recovery file for reading failed -- '%s'",
+		ERR_W_ERRNO(
+			"opening the recovery file for reading failed -- '%s'",
 			path);
 		return -1;
 	}
@@ -755,7 +767,8 @@ replica_part_badblocks_recovery_file_read(struct part_health_status *part_hs)
 	do {
 		if (fscanf(recovery_file, "%zu %zu\n",
 				&bb.offset, &bb.length) < 2) {
-			LOG(1, "incomplete bad block recovery file -- '%s'",
+			LOG(1,
+				"incomplete bad block recovery file -- '%s'",
 				path);
 			ret = 1;
 			goto error_exit;
@@ -768,7 +781,7 @@ replica_part_badblocks_recovery_file_read(struct part_health_status *part_hs)
 
 		/* check if bad blocks build an increasing sequence */
 		if (bb.offset < min_offset) {
-			ERR(
+			ERR_WO_ERRNO(
 				"wrong format of bad block recovery file (bad blocks are not sorted by the offset in ascending order) -- '%s'",
 				path);
 			errno = EINVAL;
@@ -973,8 +986,8 @@ replica_badblocks_recovery_files_create_empty(struct pool_set *set,
 					O_RDWR | O_CREAT | O_EXCL,
 					0600);
 			if (fd < 0) {
-				ERR(
-					"!creating an empty bad block recovery file failed -- '%s' (part file '%s')",
+				ERR_W_ERRNO(
+					"creating an empty bad block recovery file failed -- '%s' (part file '%s')",
 					part_hs->recovery_file_name, path);
 				return -1;
 			}
@@ -983,7 +996,7 @@ replica_badblocks_recovery_files_create_empty(struct pool_set *set,
 
 			char *file_name = Strdup(part_hs->recovery_file_name);
 			if (file_name == NULL) {
-				ERR("!Strdup");
+				ERR_W_ERRNO("Strdup");
 				return -1;
 			}
 
@@ -991,8 +1004,8 @@ replica_badblocks_recovery_files_create_empty(struct pool_set *set,
 
 			/* fsync the file's directory */
 			if (os_fsync_dir(dir_name) < 0) {
-				ERR(
-					"!syncing the directory of the bad block recovery file failed -- '%s' (part file '%s')",
+				ERR_W_ERRNO(
+					"syncing the directory of the bad block recovery file failed -- '%s' (part file '%s')",
 					dir_name, path);
 				Free(file_name);
 				return -1;
@@ -1070,8 +1083,8 @@ replica_badblocks_get(struct pool_set *set,
 
 			int ret = badblocks_get(path, &part_hs->bbs);
 			if (ret < 0) {
-				ERR(
-					"!checking the pool part for bad blocks failed -- '%s'",
+				ERR_W_ERRNO(
+					"checking the pool part for bad blocks failed -- '%s'",
 					path);
 				return -1;
 			}
@@ -1194,13 +1207,13 @@ replica_badblocks_check_or_clear(struct pool_set *set,
 	case RECOVERY_FILES_EXIST_ALL:
 	case RECOVERY_FILES_NOT_ALL_EXIST:
 		if (!called_from_sync) {
-			ERR(
+			ERR_WO_ERRNO(
 				"error: a bad block recovery file exists, run 'pmempool sync --bad-blocks' to fix bad blocks first");
 			return -1;
 		}
 
 		if (!fix_bad_blocks) {
-			ERR(
+			ERR_WO_ERRNO(
 				"error: a bad block recovery file exists, but the '--bad-blocks' option is not set\n"
 				ERR_MSG_BB);
 			return -1;
@@ -1305,13 +1318,13 @@ replica_badblocks_check_or_clear(struct pool_set *set,
 		/* bad blocks were found */
 
 		if (!called_from_sync) {
-			ERR(
+			ERR_WO_ERRNO(
 				"error: bad blocks found, run 'pmempool sync --bad-blocks' to fix bad blocks first");
 			return -1;
 		}
 
 		if (!fix_bad_blocks) {
-			ERR(
+			ERR_WO_ERRNO(
 				"error: bad blocks found, but the '--bad-blocks' option is not set\n"
 				ERR_MSG_BB);
 			return -1;
@@ -1348,7 +1361,7 @@ replica_badblocks_check_or_clear(struct pool_set *set,
 
 	ret = replica_badblocks_clear(set, set_hs);
 	if (ret < 0) {
-		ERR("clearing bad blocks failed");
+		ERR_WO_ERRNO("clearing bad blocks failed");
 		return -1;
 	}
 
@@ -1431,7 +1444,7 @@ check_uuids_between_parts(struct pool_set *set, unsigned repn,
 		}
 
 		if (uuidcmp(HDR(rep, p)->poolset_uuid, poolset_uuid)) {
-			ERR(
+			ERR_WO_ERRNO(
 				"different poolset uuids in parts from the same replica (repn %u, parts %u and %u) - cannot synchronize",
 				repn, part_stored, p);
 			errno = EINVAL;
@@ -1460,7 +1473,7 @@ check_uuids_between_parts(struct pool_set *set, unsigned repn,
 				hdrp->next_repl_uuid);
 
 		if (prev_differ || next_differ) {
-			ERR(
+			ERR_WO_ERRNO(
 				"different adjacent replica UUID between parts (repn %u, parts %u and %u) - cannot synchronize",
 				repn, unbroken_p, p);
 			errno = EINVAL;
@@ -1486,7 +1499,7 @@ check_uuids_between_parts(struct pool_set *set, unsigned repn,
 					hdrp->uuid) ||
 				uuidcmp(hdrp->next_part_uuid, next_hdrp->uuid);
 			if (next_decoupled) {
-				ERR(
+				ERR_WO_ERRNO(
 					"two consecutive unbroken parts are not linked to each other (repn %u, parts %u and %u) - cannot synchronize",
 					repn, p, p + 1);
 				errno = EINVAL;
@@ -1603,7 +1616,7 @@ check_poolset_uuids(struct pool_set *set,
 	/* find a replica with healthy header */
 	unsigned r_h = replica_find_replica_healthy_header(set_hs);
 	if (r_h == UNDEF_REPLICA) {
-		ERR("no healthy replica found");
+		ERR_WO_ERRNO("no healthy replica found");
 		return -1;
 	}
 
@@ -1617,7 +1630,7 @@ check_poolset_uuids(struct pool_set *set,
 			continue;
 
 		if (check_replica_poolset_uuids(set, r, poolset_uuid, set_hs)) {
-			ERR(
+			ERR_WO_ERRNO(
 				"inconsistent poolset uuids between replicas %u and %u - cannot synchronize",
 				r_h, r);
 			return -1;
@@ -1689,7 +1702,7 @@ check_uuids_between_replicas(struct pool_set *set,
 		if (p_n != UNDEF_PART && rep_uuidp != NULL &&
 				uuidcmp(*rep_uuidp,
 					HDR(rep_n, p_n)->prev_repl_uuid)) {
-			ERR(
+			ERR_WO_ERRNO(
 				"inconsistent replica uuids between replicas %u and %u",
 				r, r_n);
 			return -1;
@@ -1697,7 +1710,7 @@ check_uuids_between_replicas(struct pool_set *set,
 		if (p != UNDEF_PART && rep_n_uuidp != NULL &&
 				uuidcmp(*rep_n_uuidp,
 					HDR(rep, p)->next_repl_uuid)) {
-			ERR(
+			ERR_WO_ERRNO(
 				"inconsistent replica uuids between replicas %u and %u",
 				r, r_n);
 			return -1;
@@ -1722,7 +1735,7 @@ check_uuids_between_replicas(struct pool_set *set,
 			struct pool_replica *rep_nn = REP(set, r_nn);
 			if (uuidcmp(HDR(rep, p)->next_repl_uuid,
 					HDR(rep_nn, p_nn)->prev_repl_uuid)) {
-				ERR(
+				ERR_WO_ERRNO(
 					"inconsistent replica uuids on borders of replica %u",
 					r);
 				return -1;
@@ -1763,7 +1776,7 @@ check_replica_cycles(struct pool_set *set,
 			 * the number of all replicas; for the user it
 			 * means that:
 			 */
-			ERR(
+			ERR_WO_ERRNO(
 				"alien replica found (probably coming from a different poolset)");
 			return -1;
 		}
@@ -1807,7 +1820,7 @@ check_replica_sizes(struct pool_set *set, struct poolset_health_status *set_hs)
 
 		/* check if each replica is big enough to hold the pool data */
 		if (set->poolsize < (size_t)replica_pool_size) {
-			ERR(
+			ERR_WO_ERRNO(
 				"some replicas are too small to hold synchronized data");
 			return -1;
 		}
@@ -1819,7 +1832,8 @@ check_replica_sizes(struct pool_set *set, struct poolset_health_status *set_hs)
 
 		/* check if pools in all healthy replicas are of equal size */
 		if (pool_size != replica_pool_size) {
-			ERR("pool sizes from different replicas differ");
+			ERR_WO_ERRNO(
+				"pool sizes from different replicas differ");
 			return -1;
 		}
 	}
@@ -2048,8 +2062,9 @@ replica_check_part_sizes(struct pool_set *set, size_t min_size)
 
 		for (unsigned p = 0; p < rep->nparts; ++p) {
 			if (PART(rep, p)->filesize < min_size) {
-				ERR("replica %u, part %u: file is too small",
-						r, p);
+				ERR_WO_ERRNO(
+					"replica %u, part %u: file is too small",
+					r, p);
 				errno = EINVAL;
 				return -1;
 			}
@@ -2071,7 +2086,7 @@ replica_check_local_part_dir(struct pool_set *set, unsigned repn,
 	const char *dir = dirname(path);
 	os_stat_t sb;
 	if (os_stat(dir, &sb) != 0 || !(sb.st_mode & S_IFDIR)) {
-		ERR(
+		ERR_WO_ERRNO(
 			"directory %s for part %u in replica %u does not exist or is not accessible",
 			path, partn, repn);
 		Free(path);
@@ -2160,13 +2175,13 @@ pmempool_syncU(const char *poolset, unsigned flags)
 
 	/* check if poolset has correct signature */
 	if (util_is_poolset_file(poolset) != 1) {
-		ERR("file is not a poolset file");
+		ERR_WO_ERRNO("file is not a poolset file");
 		goto err;
 	}
 
 	/* check if flags are supported */
 	if (check_flags_sync(flags)) {
-		ERR("unsupported flags");
+		ERR_WO_ERRNO("unsupported flags");
 		errno = EINVAL;
 		goto err;
 	}
@@ -2174,19 +2189,19 @@ pmempool_syncU(const char *poolset, unsigned flags)
 	/* open poolset file */
 	int fd = util_file_open(poolset, NULL, 0, O_RDONLY);
 	if (fd < 0) {
-		ERR("cannot open a poolset file");
+		ERR_WO_ERRNO("cannot open a poolset file");
 		goto err;
 	}
 
 	/* fill up pool_set structure */
 	struct pool_set *set = NULL;
 	if (util_poolset_parse(&set, poolset, fd)) {
-		ERR("parsing input poolset failed");
+		ERR_WO_ERRNO("parsing input poolset failed");
 		goto err_close_file;
 	}
 
 	if (set->nreplicas == 1) {
-		ERR("no replica(s) found in the pool set");
+		ERR_WO_ERRNO("no replica(s) found in the pool set");
 		errno = EINVAL;
 		goto err_close_all;
 	}
@@ -2238,19 +2253,19 @@ pmempool_transformU(const char *poolset_src,
 
 	/* check if the source poolset has correct signature */
 	if (util_is_poolset_file(poolset_src) != 1) {
-		ERR("source file is not a poolset file");
+		ERR_WO_ERRNO("source file is not a poolset file");
 		goto err;
 	}
 
 	/* check if the destination poolset has correct signature */
 	if (util_is_poolset_file(poolset_dst) != 1) {
-		ERR("destination file is not a poolset file");
+		ERR_WO_ERRNO("destination file is not a poolset file");
 		goto err;
 	}
 
 	/* check if flags are supported */
 	if (check_flags_transform(flags)) {
-		ERR("unsupported flags");
+		ERR_WO_ERRNO("unsupported flags");
 		errno = EINVAL;
 		goto err;
 	}
@@ -2258,14 +2273,14 @@ pmempool_transformU(const char *poolset_src,
 	/* open the source poolset file */
 	int fd_in = util_file_open(poolset_src, NULL, 0, O_RDONLY);
 	if (fd_in < 0) {
-		ERR("cannot open source poolset file");
+		ERR_WO_ERRNO("cannot open source poolset file");
 		goto err;
 	}
 
 	/* parse the source poolset file */
 	struct pool_set *set_in = NULL;
 	if (util_poolset_parse(&set_in, poolset_src, fd_in)) {
-		ERR("parsing source poolset failed");
+		ERR_WO_ERRNO("parsing source poolset failed");
 		os_close(fd_in);
 		goto err;
 	}
@@ -2274,7 +2289,7 @@ pmempool_transformU(const char *poolset_src,
 	/* open the destination poolset file */
 	int fd_out = util_file_open(poolset_dst, NULL, 0, O_RDONLY);
 	if (fd_out < 0) {
-		ERR("cannot open destination poolset file");
+		ERR_WO_ERRNO("cannot open destination poolset file");
 		goto err_free_poolin;
 	}
 
@@ -2283,7 +2298,7 @@ pmempool_transformU(const char *poolset_src,
 	/* parse the destination poolset file */
 	struct pool_set *set_out = NULL;
 	if (util_poolset_parse(&set_out, poolset_dst, fd_out)) {
-		ERR("parsing destination poolset failed");
+		ERR_WO_ERRNO("parsing destination poolset failed");
 		os_close(fd_out);
 		goto err_free_poolin;
 	}
@@ -2293,8 +2308,9 @@ pmempool_transformU(const char *poolset_src,
 	enum pool_type ptype = pool_set_type(set_in);
 	if (ptype != POOL_TYPE_OBJ) {
 		errno = EINVAL;
-		ERR("transform is not supported for given pool type: %s",
-				pool_get_pool_type_str(ptype));
+		ERR_WO_ERRNO(
+			"transform is not supported for given pool type: %s",
+			pool_get_pool_type_str(ptype));
 		goto err_free_poolout;
 	}
 
