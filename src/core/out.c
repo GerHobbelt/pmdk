@@ -29,6 +29,43 @@ static int Log_level;
 static FILE *Out_fp;
 static unsigned Log_alignment;
 
+#ifdef DEBUG
+static const enum core_log_level level_to_core_log_level[5] = {
+	[0] = CORE_LOG_DISABLED,
+	[1] = CORE_LOG_LEVEL_ERROR,
+	[2] = CORE_LOG_LEVEL_NOTICE,
+	[3] = CORE_LOG_LEVEL_INFO,
+	[4] = CORE_LOG_LEVEL_DEBUG,
+};
+
+static const int core_log_level_to_level[6] = {
+	[CORE_LOG_LEVEL_FATAL]		= 1,
+	[CORE_LOG_LEVEL_ERROR]		= 1,
+	[CORE_LOG_LEVEL_WARNING]	= 2,
+	[CORE_LOG_LEVEL_NOTICE]		= 2,
+	[CORE_LOG_LEVEL_INFO]		= 3,
+	[CORE_LOG_LEVEL_DEBUG]		= 4,
+};
+
+#define OUT_MAX_LEVEL 4
+
+static void
+out_legacy(void *context, enum core_log_level core_level, const char *file_name,
+	const int line_no, const char *function_name, const char *message)
+{
+	SUPPRESS_UNUSED(context);
+
+	int level;
+	if (core_level == CORE_LOG_LEVEL_ALWAYS) {
+		level = 1; /* traditionally used for this kind of messages */
+	} else {
+		level = core_log_level_to_level[core_level];
+	}
+
+	out_log(file_name, line_no, function_name, level, "%s", message);
+}
+#endif /* DEBUG */
+
 /*
  * out_init -- initialize the log
  *
@@ -54,11 +91,26 @@ out_init(const char *log_prefix, const char *log_level_var,
 #ifdef DEBUG
 	char *log_level;
 	char *log_file;
+	int log_level_cropped = 0;
+	int ret;
 
 	if ((log_level = os_getenv(log_level_var)) != NULL) {
 		Log_level = atoi(log_level);
 		if (Log_level < 0) {
 			Log_level = 0;
+		}
+		if (Log_level <= OUT_MAX_LEVEL) {
+			log_level_cropped = Log_level;
+		} else {
+			log_level_cropped = OUT_MAX_LEVEL;
+		}
+	}
+
+	if (log_level != NULL) {
+		ret = core_log_set_threshold(CORE_LOG_THRESHOLD,
+			level_to_core_log_level[log_level_cropped]);
+		if (ret) {
+			CORE_LOG_FATAL("Cannot set log threshold");
 		}
 	}
 
@@ -84,6 +136,13 @@ out_init(const char *log_prefix, const char *log_level_var,
 				log_prefix, log_file_var,
 				log_file, buff);
 			abort();
+		}
+	}
+
+	if (log_level != NULL || log_file != NULL) {
+		ret = core_log_set_function(out_legacy, NULL);
+		if (ret) {
+			CORE_LOG_FATAL("Cannot set legacy log function");
 		}
 	}
 #endif	/* DEBUG */
@@ -254,122 +313,6 @@ end:
 }
 
 /*
- * out_error -- common error output code, all error messages go through here
- */
-static void
-out_error(int use_errno, const char *file, int line, const char *func,
-		const char *suffix, const char *fmt, va_list ap)
-{
-	int oerrno = 0;
-	if (use_errno)
-		oerrno = errno;
-	unsigned cc = 0;
-	unsigned print_msg = 1;
-	int ret;
-	const char *sep = "";
-	char errstr[UTIL_MAX_ERR_MSG] = "";
-
-	char *last_error = (char *)last_error_msg_get();
-
-	if (last_error == NULL) {
-		out_print_func("No memory to properly format error strings.");
-		return;
-	}
-
-	if (fmt) {
-		/*
-		 * '*' at the begining means 'do not push message to output'
-		 */
-		if (*fmt == '*') {
-			print_msg = 0;
-			fmt++;
-		}
-
-		if (use_errno) {
-			sep = ": ";
-			util_strerror(oerrno, errstr, UTIL_MAX_ERR_MSG);
-		}
-
-		ret = vsnprintf(&last_error[cc], MAXPRINT, fmt, ap);
-		if (ret < 0) {
-			strcpy(last_error, "vsnprintf failed");
-			goto end;
-		}
-		cc += (unsigned)ret;
-		out_snprintf(&last_error[cc], MAXPRINT - cc, "%s%s",
-				sep, errstr);
-	}
-
-#ifdef DEBUG
-	if (Log_level >= 1 && print_msg) {
-		char buf[MAXPRINT];
-		cc = 0;
-
-		if (file) {
-			char *f = strrchr(file, OS_DIR_SEPARATOR);
-			if (f)
-				file = f + 1;
-			ret = out_snprintf(&buf[cc], MAXPRINT,
-					"<%s>: <1> [%s:%d %s] ",
-					Log_prefix, file, line, func);
-			if (ret < 0) {
-				out_print_func("out_snprintf failed");
-				goto end;
-			}
-			cc += (unsigned)ret;
-			if (cc < Log_alignment) {
-				memset(buf + cc, ' ', Log_alignment - cc);
-				cc = Log_alignment;
-			}
-		}
-
-		out_snprintf(&buf[cc], MAXPRINT - cc, "%s%s", last_error,
-				suffix);
-
-		out_print_func(buf);
-	}
-#else
-	/* suppress unused-parameter errors */
-	SUPPRESS_UNUSED(file, line, func, suffix, print_msg);
-#endif
-
-end:
-	if (use_errno)
-		errno = oerrno;
-}
-
-/*
- * out -- output a line, newline added automatically
- */
-void
-out(const char *fmt, ...)
-{
-	va_list ap;
-	va_start(ap, fmt);
-
-	out_common(NULL, 0, NULL, 0, "\n", fmt, ap);
-
-	va_end(ap);
-}
-
-/*
- * out_nonl -- output a line, no newline added automatically
- */
-void
-out_nonl(int level, const char *fmt, ...)
-{
-	va_list ap;
-
-	if (Log_level < level)
-			return;
-
-	va_start(ap, fmt);
-	out_common(NULL, 0, NULL, level, "", fmt, ap);
-
-	va_end(ap);
-}
-
-/*
  * out_log_va/out_log -- output a log line if Log_level >= level
  */
 void
@@ -389,21 +332,6 @@ out_log(const char *file, int line, const char *func, int level,
 
 	va_start(ap, fmt);
 	out_log_va(file, line, func, level, fmt, ap);
-
-	va_end(ap);
-}
-
-/*
- * out_err -- output an error message
- */
-void
-out_err(int use_errno, const char *file, int line, const char *func,
-		const char *fmt, ...)
-{
-	va_list ap;
-	va_start(ap, fmt);
-
-	out_error(use_errno, file, line, func, "\n", fmt, ap);
 
 	va_end(ap);
 }
