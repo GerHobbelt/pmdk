@@ -119,13 +119,13 @@ test_ERR_W_ERRNO(const struct test_case *tc, int argc, char *argv[])
 	return NO_ARGS_CONSUMED;
 }
 
-#define TOTAL_MESSAGE_NUM_EXPECTED 212
+#define TOTAL_MESSAGE_NUM_EXPECTED 213
 static int Max_message_len = 0;
 static int Total_message_num = 0;
 static char The_longest_message[BIG_BUF_SIZE];
 
 FUNC_MOCK(core_log, void, enum core_log_level level, int errnum,
-	const char *file_name, int line_no, const char *function_name,
+	const char *file_name, unsigned line_no, const char *function_name,
 	const char *message_format, ...)
 	FUNC_MOCK_RUN_DEFAULT {
 		char buf[BIG_BUF_SIZE] = "";
