@@ -10,11 +10,12 @@
 ## Generating call stacks
 
 ```sh
-./make_stack_usage.sh
-./make_api.sh
-./make_extra.py
-./make_cflow.sh
-./make_call_stacks.py
+./make_stack_usage.sh && \
+./make_api.sh && \
+./make_extra.py && \
+./make_cflow.sh && \
+./make_call_stacks.py --filter-api-file examples/api_filter.txt \
+    --filter-lower-limit 8192 --dump-all-stacks
 ```
 
 If succesfull, it produces:
@@ -26,6 +27,15 @@ If succesfull, it produces:
 `call_stacks_*.json` files are ordered in descending order by call stack use.
 
 **Note**:  If too many functions ought to be added to a white list it might be useful to ignore functions having a certain stack usage or lower. Please see `-t` option to set a desired threshold.
+
+## Validation
+
+XXX
+
+```sh
+./make_call_stacks.py -d
+./check_stack_usage.sh
+```
 
 ## Optional
 
