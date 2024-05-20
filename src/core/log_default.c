@@ -93,20 +93,18 @@ err_message:
  * are formatted and inserted in the message.
  *
  * ASSUMPTIONS:
- * - level >= CORE_LOG_LEVEL_FATAL && level <= CORE_LOG_LEVEL_DEBUG
+ * - level >= CORE_LOG_LEVEL_HARK && level <= CORE_LOG_LEVEL_DEBUG
  * - level <= Core_log_threshold[LOG_THRESHOLD]
  * - file == NULL || (file != NULL && function != NULL)
  */
 void
-core_log_default_function(void *context, enum core_log_level level,
-	const char *file_name, const int line_no, const char *function_name,
-	const char *message)
+core_log_default_function(enum core_log_level level, const char *file_name,
+	const int line_no, const char *function_name, const char *message)
 {
-	SUPPRESS_UNUSED(context);
-
 	char file_info_buffer[256] = "";
 	const char *file_info = file_info_buffer;
 	const char file_info_error[] = "[file info error]: ";
+	enum core_log_level threshold_aux;
 
 	if (file_name) {
 		/* extract base_file_name */
@@ -139,7 +137,8 @@ core_log_default_function(void *context, enum core_log_level level,
 	}
 
 	/* secondary logging destination (CORE_LOG_THRESHOLD_AUX) */
-	if (level <= Core_log_threshold[CORE_LOG_THRESHOLD_AUX]) {
+	(void) core_log_get_threshold(CORE_LOG_THRESHOLD_AUX, &threshold_aux);
+	if (level <= threshold_aux) {
 		char times_tamp[45] = "";
 		get_timestamp_prefix(times_tamp, sizeof(times_tamp));
 		(void) fprintf(stderr, "%s[%ld] %s%s%s\n", times_tamp,

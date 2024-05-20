@@ -23,7 +23,6 @@ OBJ_TESTS = \
 	obj_many_size_allocs\
 	obj_realloc\
 	obj_sync\
-	\
 	obj_action\
 	obj_alloc\
 	obj_badblock\
@@ -108,7 +107,13 @@ OBJ_TESTS = \
 
 OTHER_TESTS = \
 	arch_flags\
+	core_log\
+	core_log_default_function\
+	core_log_function_mt\
+	core_log_internal\
 	core_log_max\
+	core_log_no_func\
+	core_log_threshold_mt\
 	checksum\
 	compat_incompat_features\
 	ctl_prefault\
