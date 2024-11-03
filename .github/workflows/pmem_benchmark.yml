@@ -10,13 +10,12 @@ on:
         type: string
         default: master
 
+permissions: {}
 
 jobs:
   prep_runtime:
     name: Prepare runtime
     runs-on: [self-hosted, benchmark]
-    permissions:
-      contents: read
     steps:
       - name: Clone the git repo
         uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
@@ -38,8 +37,6 @@ jobs:
             GITHUB_REF: ${{ inputs.reference_ref }}
           - ROLE: rival
             GITHUB_REF: ${{ inputs.rival_ref }}
-    permissions:
-      contents: read
     env:
       MANIFEST: ${{ matrix.ROLE }}/manifest.txt
     steps:
@@ -94,7 +91,7 @@ jobs:
     needs: run
     steps:
       - name: Download all artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@fa0a91b85d4f404e444e00e005971372dc801d16 # v4.1.8
         with:
           path: csvs
 
